@@ -16,15 +16,15 @@ This project demonstrates that:
 ---
 
 ## Repository Structure
-contracts/
-├── IPriceFeed.sol
-├── ITwapFeed.sol
-├── MockPriceFeed.sol
-├── MockTWAPFeed.sol
-├── OracleMonitor.sol
-├── OracleMonitorV2.sol
-├── SimpleLendingProtocol.sol
-└── SimpleLendingProtocolV2.sol
+contracts/<br>
+├── IPriceFeed.sol<br>
+├── ITwapFeed.sol<br>
+├── MockPriceFeed.sol<br>
+├── MockTWAPFeed.sol<br>
+├── OracleMonitor.sol<br>
+├── OracleMonitorV2.sol<br>
+├── SimpleLendingProtocol.sol<br>
+└── SimpleLendingProtocolV2.sol<br>
 
 ---
 
@@ -141,14 +141,23 @@ The design prioritizes protocol safety over short-term availability during extre
 4. Simulate normal operation and oracle manipulation scenarios
 5. Observe borrowing behavior with and without anomaly detection
 
----
-
-## License
-
-This project is released under the **MIT License**.
-
----
-
 ## Acknowledgements
 
 This work is inspired by prior research on oracle manipulation attacks, particularly **POMABuster**, and by real-world oracle designs used in protocols such as MakerDAO, Aave, and Chainlink.
+
+
+## How to Run the Project
+
+This project uses **Hardhat** to compile, deploy, and test Solidity smart contracts locally. All experiments run on a local Ethereum development network and do not require real ETH or mainnet access.
+
+Use the following commands to run the contracts 
+```
+npx hardhat compile
+npx hardhat test
+```
+This will:<br>
+	•	Deploy mock spot and TWAP oracles<br>
+	•	Deploy oracle monitors<br>
+	•	Deploy lending protocols<br>
+	•	Simulate oracle manipulation attacks<br>
+	•	Verify that attacks are blocked when the monitor is enabled<br>
