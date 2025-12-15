@@ -1,57 +1,154 @@
-# Sample Hardhat 3 Beta Project (`node:test` and `viem`)
+# POMABuster-Style Detection of Oracle Manipulation in DeFi
 
-This project showcases a Hardhat 3 Beta project using the native Node.js test runner (`node:test`) and the `viem` library for Ethereum interactions.
+This repository implements a **POMABuster-style oracle manipulation detection framework** for decentralized finance (DeFi) protocols. The system monitors multiple price sources and identifies anomalous price behavior using **cross-oracle deviation**, **spot vs. TWAP consistency**, and **TWAP rate-of-change constraints**. The detector is integrated with a simplified lending protocol to demonstrate how oracle manipulation attacks can be **detected and actively prevented**.
 
-To learn more about the Hardhat 3 Beta, please visit the [Getting Started guide](https://hardhat.org/docs/getting-started#getting-started-with-hardhat-3). To share your feedback, join our [Hardhat 3 Beta](https://hardhat.org/hardhat3-beta-telegram-group) Telegram group or [open an issue](https://github.com/NomicFoundation/hardhat/issues/new) in our GitHub issue tracker.
+---
 
-## Project Overview
+## Motivation
 
-This example project includes:
+DeFi protocols rely heavily on price oracles to value assets, determine borrowing limits, and trigger liquidations. Manipulation of oracle prices—often enabled by flash loans and low-liquidity markets—has led to numerous real-world exploits and significant financial losses.
 
-- A simple Hardhat configuration file.
-- Foundry-compatible Solidity unit tests.
-- TypeScript integration tests using [`node:test`](nodejs.org/api/test.html), the new Node.js native test runner, and [`viem`](https://viem.sh/).
-- Examples demonstrating how to connect to different types of networks, including locally simulating OP mainnet.
+This project demonstrates that:
+- Liquidity pools themselves cannot prevent price manipulation
+- Oracles are a critical attack surface
+- Protocols can defend themselves by **detecting abnormal oracle behavior** before executing sensitive actions such as borrowing
 
-## Usage
+---
 
-### Running Tests
+## Repository Structure
+contracts/
+├── IPriceFeed.sol
+├── ITwapFeed.sol
+├── MockPriceFeed.sol
+├── MockTWAPFeed.sol
+├── OracleMonitor.sol
+├── OracleMonitorV2.sol
+├── SimpleLendingProtocol.sol
+└── SimpleLendingProtocolV2.sol
 
-To run all the tests in the project, execute the following command:
+---
 
-```shell
-npx hardhat test
-```
+## Contract Overview
 
-You can also selectively run the Solidity or `node:test` tests:
+### Interfaces
+- **IPriceFeed.sol**  
+  Interface for spot price oracle feeds.
 
-```shell
-npx hardhat test solidity
-npx hardhat test nodejs
-```
+- **ITwapFeed.sol**  
+  Interface for TWAP (Time-Weighted Average Price) oracle feeds.
 
-### Make a deployment to Sepolia
+### Mock Oracles
+- **MockPriceFeed.sol**  
+  Simulates a spot price oracle with manually adjustable prices.
 
-This project includes an example Ignition module to deploy the contract. You can deploy this module to a locally simulated chain or to Sepolia.
+- **MockTWAPFeed.sol**  
+  Simulates a TWAP oracle with controllable price and timestamp, enabling temporal attack simulations.
 
-To run the deployment to a local chain:
+### Oracle Monitors
+- **OracleMonitor.sol**  
+  Baseline monitor implementing **cross-oracle deviation detection** only.
 
-```shell
-npx hardhat ignition deploy ignition/modules/Counter.ts
-```
+- **OracleMonitorV2.sol**  
+  Enhanced POMABuster-style monitor implementing:
+  - Cross-oracle deviation detection  
+  - Spot price vs. TWAP consistency checks  
+  - TWAP accumulator (rate-of-change) constraints  
 
-To run the deployment to Sepolia, you need an account with funds to send the transaction. The provided Hardhat configuration includes a Configuration Variable called `SEPOLIA_PRIVATE_KEY`, which you can use to set the private key of the account you want to use.
+### Lending Protocols
+- **SimpleLendingProtocol.sol**  
+  Baseline lending protocol vulnerable to oracle manipulation.
 
-You can set the `SEPOLIA_PRIVATE_KEY` variable using the `hardhat-keystore` plugin or by setting it as an environment variable.
+- **SimpleLendingProtocolV2.sol**  
+  Secured lending protocol that **blocks borrowing when oracle anomalies are detected**.
 
-To set the `SEPOLIA_PRIVATE_KEY` config variable using `hardhat-keystore`:
+---
 
-```shell
-npx hardhat keystore set SEPOLIA_PRIVATE_KEY
-```
+## Threat Model
 
-After setting the variable, you can run the deployment with the Sepolia network:
+The system considers adversaries capable of:
+- Using flash loans to manipulate liquidity pool prices
+- Temporarily inflating spot prices
+- Attempting slow-drift TWAP manipulation
 
-```shell
-npx hardhat ignition deploy --network sepolia ignition/modules/Counter.ts
-```
+The monitor assumes:
+- Oracle sources are not all compromised simultaneously
+- At least one oracle provides an honest reference price
+
+---
+
+## Detection Design
+
+The enhanced oracle monitor (`OracleMonitorV2`) performs three complementary checks:
+
+1. **Cross-Oracle Deviation**  
+   Detects disagreement between independent oracle price feeds.
+
+2. **Spot vs. TWAP Consistency**  
+   Detects short-lived price spikes characteristic of flash-loan-based attacks.
+
+3. **TWAP Rate-of-Change (Accumulator Test)**  
+   Detects slow, sustained price manipulation that evades instantaneous checks.
+
+An anomaly is flagged if **any** test fails.
+
+---
+
+## Security Guarantees
+
+With the enhanced monitor enabled:
+- Flash-loan-based oracle manipulation attacks are detected
+- Borrowing requests using manipulated prices are rejected
+- Liquidity pool manipulation alone does not result in protocol loss
+
+The framework does **not** attempt to prevent swaps or flash loans themselves; instead, it prevents **unsafe protocol decisions** based on manipulated oracle data.
+
+---
+
+## Overhead
+
+- **Computation:** Constant-time checks (O(1))
+- **Gas:** Modest overhead limited to oracle-dependent operations
+- **Latency:** No additional block-level delay
+- **Storage:** Minimal (TWAP baseline state only)
+
+The design prioritizes protocol safety over short-term availability during extreme market conditions.
+
+---
+
+## Limitations
+
+- Cannot detect coordinated majority-oracle compromise
+- Effectiveness depends on oracle source independence
+- Conservative thresholds may temporarily block legitimate borrowing during high volatility
+- Does not attribute anomalies to specific attackers or attack mechanisms
+
+---
+
+## Use Cases
+
+- Research and teaching demonstrations
+- Prototyping oracle-aware DeFi protocols
+- Security analysis of oracle manipulation defenses
+- Comparative evaluation of oracle designs
+
+---
+
+## How to Use
+
+1. Deploy mock oracles (`MockPriceFeed`, `MockTWAPFeed`)
+2. Deploy `OracleMonitorV2` with appropriate thresholds
+3. Deploy `SimpleLendingProtocolV2` using the monitor
+4. Simulate normal operation and oracle manipulation scenarios
+5. Observe borrowing behavior with and without anomaly detection
+
+---
+
+## License
+
+This project is released under the **MIT License**.
+
+---
+
+## Acknowledgements
+
+This work is inspired by prior research on oracle manipulation attacks, particularly **POMABuster**, and by real-world oracle designs used in protocols such as MakerDAO, Aave, and Chainlink.
